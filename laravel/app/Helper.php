@@ -63,7 +63,7 @@ function admin($parameter)
 function wallet($userid, $type = "string")
 {
     $amount = Wallet::where('userid', $userid)->first();
-    if ($amount->amount > 0) {
+    if ($amount && $amount->amount > 0) {
         if ($type == "num") {
             return $amount->amount;
         } else {

@@ -1,3 +1,9 @@
+var increamtsappgame = null;
+var forceCrashTriggered = false;
+var flightStartTime = null;
+var flightStartTimeout = null;
+var flightTarget = 0;
+
 function gameover(lastint) {
     $.ajax({
         url: '/game/game_over',
@@ -71,81 +77,105 @@ function gamegenerate() {
                     new_game_generated();
                     lets_fly_one();
                     lets_fly();
-                    let currentbet = 0;
-                    let a =1.0;
-                        $.ajax({
-                            url: '/game/increamentor',
-                            type: "POST",
-                            data: {
-                                _token: hash_id
-                            },
-                            dataType: "json",
-                            success: function (data) {
-                                currentbet = data.result;
-                            
-                        $.ajax({
-                        url: '/game/currentlybet',
+                    let flightMultiplier = 0;
+                    let flightStart = null;
+                    let flightServerTime = null;
+                    let localTick = 1.0;
+
+                    $.ajax({
+                        url: '/game/increamentor',
                         type: "POST",
                         data: {
                             _token: hash_id
                         },
                         dataType: "json",
-                        success: function (intialData) {
-                            info_data(intialData);
-                        }
-                        });
-                    let increamtsappgame = setInterval(() => {
-                        if ( a >= currentbet ) {
-                            let res = parseFloat(a).toFixed(2);
-                            let result = res;
-                            crash_plane(result);
-                            incrementor(res);
-                            gameover(result);
-                            $("#all_bets .mCSB_container").empty();
-                            $.ajax({
-                                url: '/game/my_bets_history',
-                                type: "POST",
-                                data: {
-                                    _token: hash_id
-                                },
-                                dataType: "json",
-                                success: function (data) {
-                                    $("#my_bet_list").empty();
-                                    for (let $i = 0; $i < data.length; $i++) {
-                                        let date = new Date(data[$i].created_at);
-                                        $("#my_bet_list").append(`
-                                    <div class="list-items">
-                                    <div class="column-1 users fw-normal">
-                                        `+date.getHours()+`:`+date.getMinutes()+`
-                                    </div>
-                                    <div class="column-2">
-                                        <button
-                                            class="btn btn-transparent previous-history d-flex align-items-center mx-auto fw-normal">
-                                            `+data[$i].amount+`₹
-                                        </button>
-                                    </div>
-                                    <div class="column-3">
-
-                                        <div class="bg3 custom-badge mx-auto">
-                                            `+data[$i].cashout_multiplier+`x</div>
-                                    </div>
-                                    <div class="column-4 fw-normal">
-                                        `+Math.round(data[$i].cashout_multiplier*data[$i].amount)+`₹
-                                    </div>
-                                </div>
-                                `);
-                                    }
-                                }
-                            });
-                            clearInterval(increamtsappgame);
-                            gamegenerate();
-                        } else {
-                            a = parseFloat(a) + 0.01;
-                            incrementor(parseFloat(a).toFixed(2));
-                        }
-                    }, 100);
+                        success: function (data) {
+                            flightMultiplier = parseFloat(data.result);
+                            flightStart = parseInt(data.start_time, 10);
+                            flightServerTime = parseInt(data.server_time, 10);
+                            flightStartTime = flightStart;
+                            flightTarget = flightMultiplier;
+                            if (increamtsappgame) {
+                                clearInterval(increamtsappgame);
+                                increamtsappgame = null;
                             }
-                        });
+                            if (window.flightStartTimeout) {
+                                clearTimeout(window.flightStartTimeout);
+                                window.flightStartTimeout = null;
+                            }
+                            forceCrashTriggered = false;
+
+                            const startDelay = Math.max(0, flightStart - flightServerTime);
+                            const beginFlight = function () {
+                                localTick = 1.0;
+                                if (increamtsappgame) {
+                                    clearInterval(increamtsappgame);
+                                    increamtsappgame = null;
+                                }
+                                increamtsappgame = setInterval(() => {
+                                    if (forceCrashTriggered) {
+                                        clearInterval(increamtsappgame);
+                                        increamtsappgame = null;
+                                        return;
+                                    }
+                                    if (localTick >= flightTarget) {
+                                        const res = flightTarget.toFixed(2);
+                                        crash_plane(res);
+                                        incrementor(res);
+                                        gameover(res);
+                                        $("#all_bets .mCSB_container").empty();
+                                        $.ajax({
+                                            url: '/game/my_bets_history',
+                                            type: "POST",
+                                            data: {
+                                                _token: hash_id
+                                            },
+                                            dataType: "json",
+                                            success: function (data) {
+                                                $("#my_bet_list").empty();
+                                                for (let $i = 0; $i < data.length; $i++) {
+                                                    let date = new Date(data[$i].created_at);
+                                                    $("#my_bet_list").append(`
+                                                <div class="list-items">
+                                                <div class="column-1 users fw-normal">
+                                                    `+date.getHours()+`:`+date.getMinutes()+`
+                                                </div>
+                                                <div class="column-2">
+                                                    <button
+                                                        class="btn btn-transparent previous-history d-flex align-items-center mx-auto fw-normal">
+                                                        `+data[$i].amount+`₹
+                                                    </button>
+                                                </div>
+                                                <div class="column-3">
+
+                                                    <div class="bg3 custom-badge mx-auto">
+                                                        `+data[$i].cashout_multiplier+`x</div>
+                                                </div>
+                                                <div class="column-4 fw-normal">
+                                                    `+Math.round(data[$i].cashout_multiplier*data[$i].amount)+`₹
+                                                </div>
+                                            </div>
+                                            `);
+                                                }
+                                            }
+                                        });
+                                        clearInterval(increamtsappgame);
+                                        increamtsappgame = null;
+                                        gamegenerate();
+                                    } else {
+                                        localTick = parseFloat((localTick + 0.01).toFixed(2));
+                                        incrementor(localTick.toFixed(2));
+                                    }
+                                }, 100);
+                            };
+
+                            if (startDelay > 0) {
+                                window.flightStartTimeout = setTimeout(beginFlight, startDelay);
+                            } else {
+                                beginFlight();
+                            }
+                        }
+                    });
                 }
             });
         }, 5000);
@@ -153,10 +183,37 @@ function gamegenerate() {
 }
 
 function check_game_running(event) {
-    
+    $.ajax({
+        url: '/game/existence',
+        type: 'POST',
+        data: {
+            _token: hash_id,
+            event: event
+        },
+        dataType: 'json',
+        success: function (result) {
+            if (result && result.data) {
+                if (!increamtsappgame) {
+                    gamegenerate();
+                }
+            } else {
+                if (!increamtsappgame) {
+                    setTimeout(function () {
+                        gamegenerate();
+                    }, 1000);
+                }
+            }
+        },
+        error: function () {
+            if (!increamtsappgame) {
+                setTimeout(function () {
+                    gamegenerate();
+                }, 1000);
+            }
+        }
+    });
 }
 
 $(document).ready(function () {
     check_game_running("check");
-    // gamegenerate();
 });

@@ -70,6 +70,7 @@
     <!-- inject:js -->
     <script src="/aviatoradmin/assets/js/off-canvas.js"></script>
     <script src="/aviatoradmin/assets/js/hoverable-collapse.js"></script>
+    <script src="/aviatoradmin/assets/js/jquery.cookie.js" type="text/javascript"></script>
     <script src="/aviatoradmin/assets/js/misc.js"></script>
     <script src="/js/appcustomize.js"></script>
     <!-- endinject -->

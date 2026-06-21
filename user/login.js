@@ -38,6 +38,17 @@ $("#login").on('click', function() {
 })
 
 function login_ajax(logindata, redirect_url) {
+    var token = $("input[name='_token']").val();
+    if (typeof logindata === 'string') {
+        if (token && logindata.indexOf('_token=') === -1) {
+            logindata += '&_token=' + encodeURIComponent(token);
+        }
+    } else if (typeof logindata === 'object' && logindata !== null) {
+        if (token && !logindata._token) {
+            logindata._token = token;
+        }
+    }
+
     $.ajax({
         url: '/auth/login',
         data: logindata,

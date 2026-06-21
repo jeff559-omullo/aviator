@@ -20,6 +20,20 @@
     </nav>
   </div>
   <div class="row">
+    <div class="col-md-4 grid-margin stretch-card">
+      <div class="card">
+        <div class="card-body">
+          <h4 class="card-title">Force Crash</h4>
+          <p class="card-description">Manually end the current crash with a multiplier (e.g., 2.50)</p>
+          <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="Multiplier (e.g. 2.50)" id="forceCrashValue">
+            <input type="text" class="form-control" placeholder="Delay seconds (optional)" id="forceCrashDelay" style="max-width:140px; margin-left:8px;">
+            <button class="btn btn-danger" type="button" id="forceCrashBtn">Force Crash</button>
+          </div>
+          <small class="text-muted" id="forceCrashResult"></small>
+        </div>
+      </div>
+    </div>
     <div class="col-md-4 stretch-card grid-margin">
       <div class="card bg-gradient-danger card-img-holder text-white">
         <div class="card-body">
@@ -325,5 +339,28 @@
 @endsection
 
 @section('js')
-    
+  <script>
+    $('#forceCrashBtn').on('click', function() {
+      var val = $('#forceCrashValue').val();
+      var delay = $('#forceCrashDelay').val();
+      if (!val) {
+        iziToast.error({title: 'Error', message: 'Enter a multiplier value'});
+        return;
+      }
+      $('#forceCrashBtn').prop('disabled', true);
+      var payload = {
+        _token: "{{ csrf_token() }}",
+        last_time: val
+      };
+      if (delay) payload.delay = delay;
+      $.post("{{ url('admin/api/triggercrash') }}", payload).done(function(res) {
+        iziToast.success({title: 'Success', message: 'Crash triggered'});
+        $('#forceCrashResult').text('Response: ' + JSON.stringify(res));
+      }).fail(function(xhr) {
+        iziToast.error({title: 'Error', message: xhr.responseText || 'Request failed'});
+      }).always(function() {
+        $('#forceCrashBtn').prop('disabled', false);
+      });
+    });
+  </script>
 @endsection

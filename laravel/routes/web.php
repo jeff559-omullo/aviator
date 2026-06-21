@@ -69,7 +69,10 @@ Route::group(['prefix' => 'admin/', 'middleware' => ['isAdmin']], function () {
         Route::post('/editamountsetup', [Adminapi::class, "editamountsetup"]);
         Route::post('/bankdetail', [Adminapi::class, "editbankdetail"]);
         Route::post('/updatewallet', [Adminapi::class, "updatewallet"]);
-    });
+        
+            // Admin trigger for forcing a crash
+            Route::post('/triggercrash', [Adminapi::class, "triggerCrash"]);
+        });
 
     Route::get('/logout', [Admin::class, "logout"]);
 });

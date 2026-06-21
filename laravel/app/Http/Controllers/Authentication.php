@@ -13,7 +13,7 @@ class Authentication extends Controller
     {
         $validated = $r->validate([
             'username' => 'required',
-            'body' => 'password',
+            'password' => 'required',
         ]);
         $data = "";
         $isSuccess = false;

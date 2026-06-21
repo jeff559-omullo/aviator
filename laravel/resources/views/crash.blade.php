@@ -545,7 +545,7 @@
                                         <div class="column-2">
                                             <button
                                                 class="btn btn-transparent previous-history d-flex align-items-center mx-auto fw-normal">
-                                                {{ number_format($item->amount, 2) }}₹
+                                                {{ number_format($item->amount, 2) }} KES
                                             </button>
                                         </div>
                                         <div class="column-3">
@@ -555,7 +555,7 @@
 
                                         </div>
                                         <div class="column-4 fw-normal">
-                                            {{ number_format($item->amount * $item->cashout_multiplier, 2) }}₹
+                                            {{ number_format($item->amount * $item->cashout_multiplier, 2) }} KES
                                         </div>
                                     </div>
                                 @endforeach
@@ -688,16 +688,16 @@
                                     <div class="bets-opt-list">
                                         <button class="btn btn-secondary btn-sm bet-opt main_amount_btn"
                                             onclick="select_direct_bet_amount(this);"><span
-                                                class="amt">100</span><span class="currency">₹</span></button>
+                                                class="amt">100</span><span class="currency">KES</span></button>
                                         <button class="btn btn-secondary btn-sm bet-opt main_amount_btn"
                                             onclick="select_direct_bet_amount(this);"><span
-                                                class="amt">200</span><span class="currency">₹</span></button>
+                                                class="amt">200</span><span class="currency">KES</span></button>
                                         <button class="btn btn-secondary btn-sm bet-opt main_amount_btn"
                                             onclick="select_direct_bet_amount(this);"><span
-                                                class="amt">500</span><span class="currency">₹</span></button>
+                                                class="amt">500</span><span class="currency">KES</span></button>
                                         <button class="btn btn-secondary btn-sm bet-opt main_amount_btn"
                                             onclick="select_direct_bet_amount(this);"><span
-                                                class="amt">1000</span><span class="currency">₹</span></button>
+                                                class="amt">1000</span><span class="currency">KES</span></button>
                                     </div>
                                 </div>
                                 <div class="buttons-block" id="bet_button">
@@ -802,16 +802,16 @@
                                     <div class="bets-opt-list">
                                         <button class="btn btn-secondary btn-sm bet-opt extra_amount_btn"
                                             onclick="select_direct_bet_amount(this);"><span
-                                                class="amt">100</span><span class="currency">₹</span></button>
+                                                class="amt">100</span><span class="currency">KES</span></button>
                                         <button class="btn btn-secondary btn-sm bet-opt extra_amount_btn"
                                             onclick="select_direct_bet_amount(this);"><span
-                                                class="amt">200</span><span class="currency">₹</span></button>
+                                                class="amt">200</span><span class="currency">KES</span></button>
                                         <button class="btn btn-secondary btn-sm bet-opt extra_amount_btn"
                                             onclick="select_direct_bet_amount(this);"><span
-                                                class="amt">500</span><span class="currency">₹</span></button>
+                                                class="amt">500</span><span class="currency">KES</span></button>
                                         <button class="btn btn-secondary btn-sm bet-opt extra_amount_btn"
                                             onclick="select_direct_bet_amount(this);"><span
-                                                class="amt">1000</span><span class="currency">₹</span></button>
+                                                class="amt">1000</span><span class="currency">KES</span></button>
                                     </div>
                                 </div>
                                 <div class="buttons-block" id="bet_button">
@@ -901,15 +901,15 @@
                     <ul class="list-unstyled limit-rules">
                         <li class="list-group-item">
                             Minimum Bet:
-                            <span class="badge badge-success px-2 font-family-number">10 ₹ </span>
+                            <span class="badge badge-success px-2 font-family-number">10 KES </span>
                         </li>
                         <li class="list-group-item">
                             Maximum Bet:
-                            <span class="badge badge-success px-2 font-family-number">8000 ₹ </span>
+                            <span class="badge badge-success px-2 font-family-number">8000 KES </span>
                         </li>
                         <li class="list-group-item">
                             Maximum win for one bet:
-                            <span class="badge badge-success px-2 font-family-number">800000 ₹ </span>
+                            <span class="badge badge-success px-2 font-family-number">800000 KES </span>
                         </li>
                     </ul>
                 </div>
@@ -1102,14 +1102,14 @@
     <!--====== Hinal (End) ======-->
     <script>
         var hash_id = '{{ csrf_token() }}';
-        var currency_id = '{{ user('currency') }}';
-        var currency_symbol = '{{ user('currency') }}';
+        var currency_id = 1;
+        var currency_symbol = 'KES';
         var wallet_balance = '{{ wallet(user('id')) }}';
         var profile_image = '1';
         var member_id = '{{ user('id') }}';
         var min_bet_amount = parseFloat('{{ setting('min_bet_amount') }}');
         var max_bet_amount = parseFloat('{{ setting('max_bet_amount') }}');
-        var current_game_data = {{ currentid() }};
+        var current_game_data = { id: {{ currentid() }} };
     </script>
 
 
@@ -1197,7 +1197,61 @@
     <script src="/user/aviatorold.js?v={{env('APP_VERSION')}}"></script>
     <script src="/user/aviatorbyapp.js?v={{env('APP_VERSION')}}"></script>
 
-        
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        try {
+            const socket = io('{{ env('SOCKET_SERVER_URL', 'http://127.0.0.1:3000') }}');
+            const statusEl = document.createElement('div');
+            statusEl.id = 'socketStatus';
+            statusEl.style.position = 'fixed';
+            statusEl.style.right = '10px';
+            statusEl.style.bottom = '10px';
+            statusEl.style.background = '#27ae60';
+            statusEl.style.color = '#fff';
+            statusEl.style.padding = '6px 10px';
+            statusEl.style.borderRadius = '6px';
+            statusEl.style.zIndex = 99999;
+            statusEl.style.fontSize = '12px';
+            statusEl.style.display = 'none';
+            statusEl.innerText = 'Socket: connected';
+            document.body.appendChild(statusEl);
+
+            socket.on('connect', function() {
+                statusEl.style.background = '#27ae60';
+                statusEl.innerText = 'Socket: connected';
+                statusEl.style.display = 'block';
+            });
+            socket.on('disconnect', function() {
+                statusEl.style.display = 'none';
+            });
+
+            socket.on('forceCrash', function(payload) {
+                try {
+                    const res = parseFloat(payload.last_time).toFixed(2);
+                    forceCrashTriggered = true;
+                    if (window.flightStartTimeout) {
+                        clearTimeout(window.flightStartTimeout);
+                        window.flightStartTimeout = null;
+                    }
+                    if (increamtsappgame) {
+                        clearInterval(increamtsappgame);
+                        increamtsappgame = null;
+                    }
+                    if (typeof crash_plane === 'function') crash_plane(res);
+                    if (typeof gameover === 'function') gameover(res);
+                    if (typeof gamegenerate === 'function') {
+                        setTimeout(function() {
+                            gamegenerate();
+                        }, 1000);
+                    }
+                } catch (e) {
+                    console.error('forceCrash handler error', e);
+                }
+            });
+        } catch (e) {
+            console.error('socket init error', e);
+        }
+    </script>
         <script>
         $(document).ready(function(){
         

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use Hash;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Gamesetting;
 
 class Adminapi extends Controller
 {
@@ -56,7 +57,7 @@ class Adminapi extends Controller
         $userid = $r->userid;
         $amount = $r->amount;
         if ($event == 'success') {
-            $firstrecharge = Transaction::where('id', $userid)->where('category', 'recharge')->where('status','0')->get();
+            $firstrecharge = Transaction::where('userid', $userid)->where('category', 'recharge')->where('status','0')->get();
             if (count($firstrecharge) == 0) {
                 $level1 = User::where('id', user('promocode', $userid))->first();
                 if ($level1) {
@@ -67,13 +68,13 @@ class Adminapi extends Controller
 
                     $level2 = User::where('id', $level1->promocode)->first();
                     if ($level2) {
-                        $level2amount = ($amount / setting('level2commission')) * 100;
+                        $level2amount = ($amount / 100) * setting('level2commission');
                         addwallet($level2->id, $level2amount);
                         addtransaction($level2->id, 'Level', date("ydmhsi"), 'credit', $level2amount, 'Level_bonus', 'Success', '1');
 
                         $level3 = User::where('id', $level2->promocode)->first();
                         if ($level3) {
-                            $level3amount = ($amount / setting('level3commission')) * 100;
+                            $level3amount = ($amount / 100) * setting('level3commission');
                             addwallet($level3->id, $level3amount);
                             addtransaction($level3->id, 'Level', date("ydmhsi"), 'credit', $level3amount, 'Level_bonus', 'Success', '1');
                         }
@@ -207,6 +208,39 @@ class Adminapi extends Controller
             $response = array('status' => 1, 'title' => "Success!!", 'message' => "User Wallet successfully Updated!");
         }
         return response()->json($response);
+    }
+
+    public function triggerCrash(Request $r)
+    {
+        $validated = $r->validate([
+            'last_time' => 'required|numeric',
+            'delay' => 'nullable|numeric',
+        ]);
+
+        // Notify socket server so connected clients stop immediately
+        try {
+            $client = new \GuzzleHttp\Client(['timeout' => 2]);
+            $form = [
+                'last_time' => $r->last_time,
+            ];
+            if ($r->has('delay')) {
+                $form['delay'] = $r->delay;
+            }
+            $client->post(env('SOCKET_SERVER_URL', 'http://127.0.0.1:3000') . '/emitCrash', [
+                'form_params' => $form
+            ]);
+        } catch (\Exception $e) {
+            // ignore socket failures
+        }
+
+        // Apply optional admin delay before shutting down the game server-side
+        if ($r->has('delay') && floatval($r->delay) > 0) {
+            usleep(intval(floatval($r->delay) * 1000000));
+        }
+
+        // Delegate to Gamesetting::game_over which handles ending the game
+        $gamesetting = new Gamesetting();
+        return $gamesetting->game_over($r);
     }
 
     public function depositNow(Request $r)

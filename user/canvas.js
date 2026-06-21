@@ -62,6 +62,7 @@ var ny2 = 0;
 var StopPlaneIntervalID1 = 0;
 var startupdown = 0;
 var imgTag;
+var stopPlaneRafId = null;
 // const canvas = document.querySelector("canvas");
 // const ctx = canvas.getContext("2d");
 // ctx.fillStyle = "red";
@@ -156,7 +157,23 @@ function setVariable(is_plan = '') {
     x2 = xend;
     startupdown = 0;
     stopPlaneEvent = 0;
-   
+    if (intervalID) {
+        clearInterval(intervalID);
+        intervalID = null;
+    }
+    if (intervalID1) {
+        clearInterval(intervalID1);
+        intervalID1 = null;
+    }
+    if (StopPlaneIntervalID) {
+        clearInterval(StopPlaneIntervalID);
+        StopPlaneIntervalID = null;
+    }
+    if (stopPlaneRafId) {
+        cancelAnimationFrame(stopPlaneRafId);
+        stopPlaneRafId = null;
+    }
+
     if (is_plan != '') {
         var is_plan_display = imgTag;
     } else {
@@ -190,31 +207,29 @@ function animatePathDrawing(ctx, x0, y0, x1, y1, x2, y2, duration, imgTag) {
 var StopPlaneIntervalID;
 function stopPlane() {
     // console.log('-----------stopPlane-------------');
-if(StopPlaneIntervalID1 == 0){
     ctx.beginPath();
     clearInterval(intervalID);
+    intervalID = null;
     clearInterval(intervalID1);
+    intervalID1 = null;
     stopPlaneEvent = 1;
     $(".rotateimage").removeClass('rotatebg');
 
+    clearInterval(StopPlaneIntervalID);
+    StopPlaneIntervalID = null;
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     var intervalTimex = 100;
     var intervalTimey = 50;
-    // var StopPlaneIntervalID1 = 0;
 
     if (startupdown == 1) {
         nx2 = estimateWidth;
         ny2 = estimateHeight;
     }
-    // var stopPlaneCount =Math.round((ctx.canvas.width - estimateWidth)/100)+1;
-    var stopPlaneCount = Math.round((ctx.canvas.width - nx2) / 4);
-    // console.log('ctx.canvas.width',ctx.canvas.width);
-    // console.log('estimateWidth',estimateWidth);
+    var stopPlaneCount = Math.max(1, Math.round((ctx.canvas.width - nx2) / 4));
 
-    StopPlaneIntervalID = setInterval(() => {
-        // console.log(canvasWidth);
-        // console.log((nx2 + intervalTimex) - imgxposition);
-        // if (canvasWidth >= ((nx2 + intervalTimex) - imgxposition)) {
+    StopPlaneIntervalID = null;
+    StopPlaneIntervalID1 = 0;
+    function stopPlaneStep() {
         ctx.beginPath();
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         ctx.moveTo(nx0, ny0);
@@ -222,39 +237,17 @@ if(StopPlaneIntervalID1 == 0){
         GameObject(imgTag, (nx2 + intervalTimex) - imgxposition, (ny2 - intervalTimey) - imgyposition, imgwidth, imgheight, 300, 2, ctx);
         ctx.closePath();
         StopPlaneIntervalID1++;
-        intervalTimex = intervalTimex + 4;
-        intervalTimey = intervalTimey + 1;
+        intervalTimex += 4;
+        intervalTimey += 1;
 
-        // if (StopPlaneIntervalID1 >= stopPlaneCount) {
-        if (StopPlaneIntervalID1 >= (stopPlaneCount)) {
-
-            // console.log('-----------------StopPlaneIntervalID1--------1-----------');
-
-            window.clearInterval(StopPlaneIntervalID);
+        if (StopPlaneIntervalID1 >= stopPlaneCount) {
             StopPlaneIntervalID1 = 0;
-            // $('.loading-game').addClass('show');
-            // setTimeout(function () {
-            // setVariable();
-            // $('.loading-game').removeClass('show');
-            // }, 5000);
-            // return false;
+            stopPlaneRafId = null;
+            return;
         }
-        // console.log('-----------------StopPlaneIntervalID1--------2-----------');
-        // } else {
-        //     // console.log('-----------------StopPlaneIntervalID1--------3-----------');
-        //     window.clearInterval(StopPlaneIntervalID);
-        //     StopPlaneIntervalID1 = 0;
-        //     // $('.loading-game').addClass('show');
-        //     setTimeout(
-        //         function () {
-        //             setVariable();
-        //             // $('.loading-game').removeClass('show');
-        //         }, 5000
-        //     );
-        // }
-    }, 1);
-    ctx.closePath();
-}
+        stopPlaneRafId = requestAnimationFrame(stopPlaneStep);
+    }
+    stopPlaneRafId = requestAnimationFrame(stopPlaneStep);
 }
 
 function drawLine() {
@@ -451,8 +444,8 @@ function drawBezierSplit(ctx, x0, y0, x1, y1, x2, y2, t0, t1, imgTag) {
             nx2 = t02 * x0 + t03 * x1 + t00 * x2,
                 ny2 = t02 * y0 + t03 * y1 + t00 * y2;
 
-            nx1 = lerp(lerp(x0, x1, t0), lerp(x1, x2, t0), t1),
-                ny1 = lerp(lerp(y0, y1, t0), lerp(y1, y2, t0), t1);
+                nx1 = lerp(lerp(x0, x1, t1), lerp(x1, x2, t1), t1),
+                ny1 = lerp(lerp(y0, y1, t1), lerp(y1, y2, t1), t1);
             ctx.moveTo(nx0, ny0);
             ctx.quadraticCurveTo(nx1, ny1, nx2, ny2);
             GameObject(imgTag, nx2 - imgxposition, ny2 - imgyposition, imgwidth, imgheight, 300, 2, ctx);

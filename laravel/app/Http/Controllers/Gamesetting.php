@@ -31,32 +31,80 @@ class Gamesetting extends Controller
     }
     public function new_game_generated(Request $r)
     {
-        $new = Setting::where('category', 'game_status')->update(['value' => '0']);
+        Setting::updateOrInsert([
+            'category' => 'game_status'
+        ], [
+            'value' => '0',
+            'status' => '0'
+        ]);
         $r->session()->put('gamegenerate','1');
+        Setting::updateOrInsert([
+            'category' => 'game_target'
+        ], [
+            'value' => '',
+            'status' => '0'
+        ]);
+        Setting::updateOrInsert([
+            'category' => 'game_start_time'
+        ], [
+            'value' => '',
+            'status' => '0'
+        ]);
         return response()->json(array("id" => currentid()));
     }
     
     public function increamentor(Request $r)
     {
-        $gamestatusdata = Setting::where('category', 'game_status')->first();
+        $gamestatusdata = Setting::firstOrCreate([
+            'category' => 'game_status'
+        ], [
+            'value' => '0',
+            'status' => '0'
+        ]);
         $res = 0;
-        if($gamestatusdata){
-                
-        $totalbet = Userbit::where('gameid',currentid())->count();
-        $totalamount = Userbit::where('gameid',currentid())->sum('amount');
-        if ($totalbet == 0) {
-            $res =  rand(8,11);
-        }else{
-            $randomresult = array(1.1,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9);
-            $res = $randomresult[rand(0,8)];
-            
+
+        $targetSetting = Setting::where('category', 'game_target')->first();
+        $startTimeSetting = Setting::where('category', 'game_start_time')->first();
+
+        if ($targetSetting && $targetSetting->value) {
+            $res = floatval($targetSetting->value);
+        } else {
+            $totalbet = Userbit::where('gameid',currentid())->count();
+            $totalamount = Userbit::where('gameid',currentid())->sum('amount');
+            $u = rand(0, 10000) / 10000;
+            $skewed = pow($u, 4);
+            $res = 1 + ($skewed * 99);
+            if ($totalbet > 0 && $totalamount > 0) {
+                $riskFactor = min(0.9, 0.3 + min($totalamount / 100000, 0.6));
+                $u = rand(0, 10000) / 10000;
+                $skewed = pow($u, 4 + $riskFactor * 4);
+                $res = 1 + ($skewed * 99);
+            }
+            $res = round($res, 2);
+            Setting::updateOrInsert([
+                'category' => 'game_target'
+            ], [
+                'value' => $res,
+                'status' => '0'
+            ]);
         }
-        
+
+        if ($startTimeSetting && $startTimeSetting->value) {
+            $startTime = intval($startTimeSetting->value);
+        } else {
+            $startTime = Carbon::now()->timestamp * 1000 + 2000;
+            Setting::updateOrInsert([
+                'category' => 'game_start_time'
+            ], [
+                'value' => $startTime,
+                'status' => '0'
+            ]);
+        }
+
                 $status = true;
                 $result = $res;
-                $response = array('status'=>$status,'result'=>$result);
+                $response = array('status'=>$status,'result'=>$result, 'start_time' => $startTime, 'server_time' => Carbon::now()->timestamp * 1000);
         return response()->json($response);
-        }
     }
     // public function increamentor(Request $r)
     // {
@@ -91,14 +139,20 @@ class Gamesetting extends Controller
 			}
             $finalamount = floatval($key->amount) * floatval($result);
             Userbit::where('id', $key->id)->update(["status"=> 1]);
-            // addwallet($key->userid,$finalamount);
+            addwallet($key->userid,$finalamount);
         }
         $new = Setting::where('category', 'game_status')->update(['value' => '0']);
         $r->session()->put('gamegenerate','0');
         $result = new Gameresult;
         $result->result = "pending";
         $result->save();
-        return wallet(user('id'));
+
+        // If this request was made by a logged-in user return their wallet,
+        // otherwise return a simple ok response for admin-triggered calls.
+        if (session()->has('userlogin')) {
+            return wallet(user('id'));
+        }
+        return response()->json(['ok' => true]);
     }
 
     public function betNow(Request $r)
@@ -161,23 +215,42 @@ class Gamesetting extends Controller
     }
 	public function cashout(Request $r){
 		$game_id = $r->game_id;
+		if (!$game_id) {
+			$game_id = currentid();
+		}
 		$bet_id = $r->bet_id;
 		$win_multiplier = $r->win_multiplier;
 		$cash_out_amount = 0;
 		$status = false;
         $message = "";
         $data = array();
-		$result = resultbyid($game_id) == 0 ? $win_multiplier : resultbyid($game_id);
-		if(floatval($result) <= 1.20){
-			$result = 0;
+
+		$userbet = Userbit::where('id', $bet_id)->where('userid', user('id'))->first();
+		if (!$userbet) {
+			$message = 'Bet not found.';
+			return response()->json(["isSuccess" => false, "data" => $data, "message" => $message]);
 		}
-		$cash_out_amount = floatval(userbetdetail($bet_id,'amount'))*floatval($result);
-		addwallet(user('id'),$cash_out_amount); 
+
+		if (resultbyid($game_id) == 0) {
+			$result = floatval($win_multiplier);
+		} else {
+			$result = floatval(resultbyid($game_id));
+			if ($result <= 1.20) {
+				$result = 0;
+			}
+		}
+
+		$cash_out_amount = floatval($userbet->amount) * $result;
+		if ($cash_out_amount > 0) {
+			addwallet(user('id'), $cash_out_amount);
+		}
+
 		$data = array(
-                    "wallet_balance" => wallet(user('id'),"num"),
-                    "cash_out_amount" => $cash_out_amount
-                );
-        Userbit::where('id', $bet_id)->update(["status"=> 1,"cashout_multiplier"=>$win_multiplier]);
+			"wallet_balance" => wallet(user('id'), "num"),
+			"cash_out_amount" => $cash_out_amount
+		);
+
+        Userbit::where('id', $bet_id)->update(["status"=> 1, "cashout_multiplier" => $win_multiplier]);
         $status = true;
 		$response = array("isSuccess" => $status, "data" => $data, "message" => $message);
         return response()->json($response);

@@ -186,7 +186,9 @@ function cash_out_now(element, section_no, increment = '') {
         var bet_amount = $("#extra_bet_section #bet_amount").val();
     }
     // let incrementor = $("#auto_increment_number").text().slice(0,-1);
-    game_id = current_game_data.id
+    var game_id = (typeof current_game_data === 'object' && current_game_data !== null)
+        ? current_game_data.id
+        : current_game_data;
 
     if (currency_id == 1) {
         var amt = parseFloat(parseFloat(incrementor) * parseFloat(bet_amount)).toFixed(2);
@@ -251,7 +253,7 @@ function cash_out_now(element, section_no, increment = '') {
     // toastr.success('You have cashed out! ' + incrementor + 'x You got ' + amt + currency_symbol);
 
     $.ajax({
-        url: 'cash_out',
+        url: '/cash_out',
         data: {
             game_id: game_id,
             bet_id: bet_id,
@@ -975,7 +977,9 @@ function cancle_now(element, section_no) {
 
 function place_bet_now() {
     for(let i=0;i < bet_array.length; i++){
-        bet_array[i].game_id = current_game_data.id;
+        bet_array[i].game_id = (typeof current_game_data === 'object' && current_game_data !== null)
+            ? current_game_data.id
+            : current_game_data;
     }
 
     $.ajax({
@@ -1021,29 +1025,30 @@ function place_bet_now() {
                 }
 
                 if (bet_array.length == 2) {
+                    let mainId = '';
+                    let extraId = '';
 
                     if (bet_array[0].section_no == 0) {
-                        $("#main_bet_id").val(result.data.return_bets[0].bet_id);
-                        $("#extra_bet_id").val(result.data.return_bets[1].bet_id);
-                    bet_array[0].is_bet = 1;
+                        mainId = result.data.return_bets[0].bet_id;
+                    } else {
+                        extraId = result.data.return_bets[0].bet_id;
                     }
 
-                    if (bet_array[0].section_no == 1) {
-                        $("#main_bet_id").val(result.data.return_bets[1].bet_id);
-                        $("#extra_bet_id").val(result.data.return_bets[0].bet_id);
-                    bet_array[0].is_bet = 1;
-                    }
                     if (bet_array[1].section_no == 0) {
-                        $("#main_bet_id").val(result.data.return_bets[0].bet_id);
-                        $("#extra_bet_id").val(result.data.return_bets[1].bet_id);
-                    bet_array[1].is_bet = 1;
+                        mainId = result.data.return_bets[1].bet_id;
+                    } else {
+                        extraId = result.data.return_bets[1].bet_id;
                     }
 
-                    if (bet_array[1].section_no == 1) {
-                        $("#main_bet_id").val(result.data.return_bets[1].bet_id);
-                        $("#extra_bet_id").val(result.data.return_bets[0].bet_id);
-                    bet_array[1].is_bet = 1;
+                    if (mainId !== '') {
+                        $("#main_bet_id").val(mainId);
                     }
+                    if (extraId !== '') {
+                        $("#extra_bet_id").val(extraId);
+                    }
+
+                    bet_array[0].is_bet = 1;
+                    bet_array[1].is_bet = 1;
                 }
             } else {
                 $(".error-toaster1 .msg").html(result.message);
